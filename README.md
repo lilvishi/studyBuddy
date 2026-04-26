@@ -4,7 +4,7 @@
 
 
 ## Getting Started: 
-**Prerequisites**
+**Prerequisites**<br>
 If you don't have python3 default on your computer, use
 ```bash
 python3 -m venv venv
@@ -12,19 +12,19 @@ source venv/bin/activate
 ```
 You should see (venv) at the beginning of your terminal line.
 
-**Installations**
+**Installations**<br>
 To install the dependencies, run
 ```bash
 pip install fastapi uvicorn pydantic openai
 ```
 
-**API Key**
+**API Key**<br>
 To run the program, you need a Gemini API key. You can get a free API key through Google AI Studio with the free tier. Then, in the terminal, run
 ```bash
 export GEMINI_API_KEY="your_gemini_api_key"
 ```
 
-**IP Address**
+**IP Address**<br>
 In the index.html, change the variable "API_BASE" to "http://your_ip_address:8000". You can find your IP address by going to Settings --> Network --> choose your WiFi & select Details.
 
 ## Running
