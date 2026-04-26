@@ -5,10 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from google import genai
 from google.genai import types
+import traceback
 
-# ---------- Config ----------
+# ---------- Config ---------
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-MODEL_NAME = "gemini-2.5-flash"
+# gemini-2.0-flash has 1,500 free requests/day vs 20 for gemini-2.5-flash
+MODEL_NAME = "gemini-2.5-flash-lite"
 
 SYSTEM_PROMPT = (
     "You are an AI lecture assistant. Read the handwritten notes in this image. "
@@ -24,7 +26,6 @@ if not GEMINI_API_KEY:
 client = genai.Client(api_key=GEMINI_API_KEY)
 app = FastAPI(title="iPad Notes AI Backend")
 
-# CORS so iPad Safari can call laptop local IP
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,22 +43,19 @@ class CanvasResponse(BaseModel):
 @app.post("/process_canvas", response_model=CanvasResponse)
 def process_canvas(payload: CanvasPayload):
     try:
-        # 1. Clean the base64 string (remove the "data:image/png;base64," prefix from the HTML canvas)
         b64_data = payload.image_base64
         if "," in b64_data:
             b64_data = b64_data.split(",")[1]
 
-        # 2. Decode into raw bytes
         image_bytes = base64.b64decode(b64_data)
 
-        # 3. Call Gemini
         response = client.models.generate_content(
             model=MODEL_NAME,
             contents=[
                 SYSTEM_PROMPT,
                 "Analyze this handwritten note.",
-                types.Part.from_bytes(data=image_bytes, mime_type='image/png')
-            ]
+                types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+            ],
         )
 
         text = (response.text or "").strip()
@@ -67,6 +65,14 @@ def process_canvas(payload: CanvasPayload):
         return CanvasResponse(response=text)
 
     except Exception as e:
+        traceback.print_exc()
+        err_str = str(e)
+        # Surface quota errors as 429 so the frontend can show a friendlier message
+        if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+            raise HTTPException(
+                status_code=429,
+                detail="API quota exceeded. Wait a minute and try again, or upgrade your Gemini plan.",
+            )
         raise HTTPException(status_code=500, detail=f"AI processing failed: {e}")
 
 @app.get("/health")

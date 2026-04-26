@@ -18,8 +18,8 @@
 
     * { 
         box-sizing: border-box; 
-        -webkit-touch-callout: none; /* Disables the long-press popup */
-        -webkit-user-select: none;   /* Disables text selection */
+        -webkit-touch-callout: none;
+        -webkit-user-select: none;
         user-select: none;
     }
 
@@ -84,7 +84,7 @@
       inset: 0;
       width: 100%;
       height: 100%;
-      touch-action: none; /* crucial for Apple Pencil / pointer events */
+      touch-action: none;
       -webkit-user-select: none;
       user-select: none;
     }
@@ -151,13 +151,10 @@
   </div>
 
   <script>
-    // ---------- Config ----------
-    // Replace with your laptop LAN IP + backend port (e.g. http://192.168.1.42:8000)
     const API_BASE = "http://10.30.144.46:8000";
     const PROCESS_URL = `${API_BASE}/process_canvas`;
     const DEBOUNCE_MS = 4000;
 
-    // ---------- Elements ----------
     const paperCanvas = document.getElementById("paperCanvas");
     const drawCanvas = document.getElementById("drawCanvas");
     const paperCtx = paperCanvas.getContext("2d");
@@ -169,7 +166,6 @@
     const statusEl = document.getElementById("status");
     const responseEl = document.getElementById("response");
 
-    // ---------- State ----------
     let mode = "pen"; 
     let isDrawing = false;
     let lastX = 0;
@@ -179,7 +175,6 @@
     let queued = false;
     let dpr = Math.max(1, window.devicePixelRatio || 1);
 
-    // --- NEW: Bounding Box State ---
     let bMinX = Infinity, bMinY = Infinity, bMaxX = -Infinity, bMaxY = -Infinity;
 
     function resetBoundingBox() {
@@ -193,7 +188,6 @@
       if (y > bMaxY) bMaxY = y;
     }
 
-    // ---------- Canvas Setup ----------
     function resizeCanvases() {
       const rect = drawCanvas.getBoundingClientRect();
       dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -206,7 +200,6 @@
       [paperCtx, drawCtx].forEach((ctx) => ctx.setTransform(dpr, 0, 0, dpr, 0, 0));
 
       drawLinedPaper();
-      // Drawing layer is reset on resize for hackathon simplicity
       resetDrawingContext();
     }
 
@@ -229,7 +222,6 @@
         paperCtx.stroke();
       }
 
-      // subtle left margin line
       paperCtx.strokeStyle = "#ffd2d2";
       paperCtx.beginPath();
       paperCtx.moveTo(42, 0);
@@ -245,7 +237,6 @@
       drawCtx.globalCompositeOperation = "source-over";
     }
 
-    // ---------- Toolbar ----------
     function setMode(nextMode) {
       mode = nextMode;
       penBtn.classList.toggle("active", mode === "pen");
@@ -256,7 +247,6 @@
         drawCtx.strokeStyle = "#111827";
         drawCtx.lineWidth = 3;
       } else {
-        // Erase only from drawing layer; lined paper remains untouched
         drawCtx.globalCompositeOperation = "destination-out";
         drawCtx.lineWidth = 18;
       }
@@ -269,8 +259,6 @@
       scheduleProcessing();
     });
 
-    // ---------- Drawing ----------
-// ---------- Drawing ----------
     function getPoint(e) {
       const rect = drawCanvas.getBoundingClientRect();
       return { x: e.clientX - rect.left, y: e.clientY - rect.top };
@@ -282,7 +270,6 @@
       const p = getPoint(e);
       lastX = p.x;
       lastY = p.y;
-      
       if (mode === "pen") expandBoundingBox(p.x, p.y);
       drawCanvas.setPointerCapture(e.pointerId);
     }
@@ -306,11 +293,7 @@
       if (!isDrawing) return;
       isDrawing = false;
       try { drawCanvas.releasePointerCapture(e.pointerId); } catch (_) {}
-      
-      // Only schedule processing if they actually drew something
-      if (bMaxX !== -Infinity) {
-          scheduleProcessing(); 
-      }
+      if (bMaxX !== -Infinity) scheduleProcessing();
     }
 
     drawCanvas.addEventListener("pointerdown", startDraw);
@@ -318,36 +301,29 @@
     drawCanvas.addEventListener("pointerup", endDraw);
     drawCanvas.addEventListener("pointercancel", endDraw);
     drawCanvas.addEventListener("pointerleave", (e) => {
-      // For Pencil, leaving canvas doesn't always mean done; ignore unless not pressed
       if (e.buttons === 0) endDraw(e);
     });
 
-    // ---------- Debounce + Network ----------
     function scheduleProcessing() {
       if (debounceTimer) clearTimeout(debounceTimer);
       statusEl.textContent = "Waiting for pause...";
-      debounceTimer = setTimeout(processCanvasImage, DEBOUNCE_MS); // Now using 4000ms
+      debounceTimer = setTimeout(processCanvasImage, DEBOUNCE_MS);
     }
 
     function getCroppedCanvasDataURL() {
-      // Add 40px of padding around the strokes so the AI has context margins
-      const padding = 40; 
-      const cropX = Math.max(0, bMinX - padding);
-      const cropY = Math.max(0, bMinY - padding);
-      const cropW = Math.min(drawCanvas.width, (bMaxX - bMinX) + (padding * 2));
-      const cropH = Math.min(drawCanvas.height, (bMaxY - bMinY) + (padding * 2));
+      const padding = 20;
+      const cropX = Math.max(0, (bMinX - padding) * dpr);
+      const cropY = Math.max(0, (bMinY - padding) * dpr);
+      const cropW = Math.min(drawCanvas.width, ((bMaxX - bMinX) + padding * 2) * dpr);
+      const cropH = Math.min(drawCanvas.height, ((bMaxY - bMinY) + padding * 2) * dpr);
 
-      // Create a temporary mini-canvas
       const tmp = document.createElement("canvas");
       tmp.width = cropW;
       tmp.height = cropH;
       const ctx = tmp.getContext("2d");
 
-      // Draw a white background so it's not transparent
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, cropW, cropH);
-
-      // Draw ONLY the cropped section of the drawing layer
       ctx.drawImage(drawCanvas, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
 
       return tmp.toDataURL("image/png");
@@ -360,12 +336,10 @@
       }
 
       inFlight = true;
-      statusEl.textContent = "Analyzing handwriting snippet...";
+      statusEl.textContent = "Analyzing handwriting...";
 
       try {
         const dataUrl = getCroppedCanvasDataURL();
-        
-        // As soon as we capture the image, reset the bounding box for the next batch of notes
         resetBoundingBox();
 
         const res = await fetch(PROCESS_URL, {
@@ -376,19 +350,25 @@
 
         if (!res.ok) {
           const errText = await res.text();
+          // ✅ Give a friendlier message for quota errors
+          if (res.status === 429) {
+            throw new Error("API quota exceeded — wait a moment and try again.");
+          }
           throw new Error(`HTTP ${res.status}: ${errText}`);
         }
 
         const data = await res.json();
-        
-        // Append the new response to the top of the sidebar, keeping history
         const newResponseHtml = `<strong>Result:</strong><br>${data.response}<hr style="border:0; border-top:1px solid #e5e7eb; margin: 10px 0;">`;
         responseEl.innerHTML = newResponseHtml + responseEl.innerHTML;
-        
         statusEl.textContent = "Ready.";
+
       } catch (err) {
-        console.error(err);
-        statusEl.textContent = "Error contacting backend.";
+        // ✅ Removed the Python traceback lines that were here — pure JS now
+        console.error("Processing error:", err);
+        statusEl.textContent = "Error — see below.";
+        const errorHtml = `<div style="color: #dc2626; padding: 10px; background: #fee2e2; border-radius: 8px;"><strong>Error:</strong><br>${err.message}</div><hr style="border:0; border-top:1px solid #e5e7eb; margin: 10px 0;">`;
+        responseEl.innerHTML = errorHtml + responseEl.innerHTML;
+
       } finally {
         inFlight = false;
         if (queued) {
@@ -398,7 +378,6 @@
       }
     }
 
-    // ---------- Init ----------
     window.addEventListener("resize", resizeCanvases);
     resizeCanvases();
     setMode("pen");
