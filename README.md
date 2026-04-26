@@ -1,4 +1,4 @@
-# ExplAIn Notes
+# explAInotes
 
 **Description:** This notetaking app explains your notes in real time using an in-built LLM that explains all concepts, answers all questions, and computes all calculations. 
 
@@ -39,6 +39,6 @@ uvicorn main:app --host 0.0.0.0 --port 8000
 
 
 ## Usage
-To use the web app on your iPad / tablet, open the url "http://your_ip_address:3000" in your Safari app. 
-You can use the Pen and Eraser tool to write a message on the notes. If you pause writing for 4 seconds, the LLM will analyze what you have written so far and send its result in the sidebar. If you end with a question mark, it will answer your question. If you end with an equal sign, it will compute the result of the calculation. Otherwise, it will define or explain any concepts you write down. 
+To use the web app on your iPad / tablet, open the url "http://your_ip_address:3000" in your Safari app.<br>
+You can use the Pen and Eraser tool to write a message on the notes. If you pause writing for 4 seconds, the LLM will analyze what you have written so far and send its result in the sidebar. If you end with a question mark, it will answer your question. If you end with an equal sign, it will compute the result of the calculation. Otherwise, it will define or explain any concepts you write down.<br>
 The web app keeps a history of the past LLM results, and it only processes your most recent writing. You can click the clear button to clear the page of notes. 
